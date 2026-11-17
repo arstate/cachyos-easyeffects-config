@@ -110,34 +110,74 @@ mkdir -p "$CONFIG_DIR/easyeffects/db" \
 
 cp -a "$REPO_DIR/configs/easyeffects/db/." "$CONFIG_DIR/easyeffects/db/"
 chmod 700 "$CONFIG_DIR/easyeffects/db"
-chmod 600 "$CONFIG_DIR/easyeffects/db/"*
+find "$CONFIG_DIR/easyeffects/db" -maxdepth 1 -type f -exec chmod 600 {} +
 
 cp -a "$REPO_DIR/configs/easyeffects/output/." "$DATA_DIR/easyeffects/output/"
 cp -a "$REPO_DIR/configs/easyeffects/irs/." "$DATA_DIR/easyeffects/irs/"
+for subdir in input rnnoise autoload/input autoload/output; do
+    if [ -d "$REPO_DIR/configs/easyeffects/$subdir" ]; then
+        find "$REPO_DIR/configs/easyeffects/$subdir" -maxdepth 1 -type f ! -name '.gitkeep' \
+            -exec cp -a {} "$DATA_DIR/easyeffects/$subdir/" \;
+    fi
+done
+
+set_ini_key() {
+    local file="$1" key="$2" val="$3"
+    local tmp_file
+    tmp_file="$(mktemp)"
+    awk -v k="$key" -v v="$val" '
+        BEGIN { prefix = k "=" }
+        index($0, prefix) == 1 { print prefix v; next }
+        { print }
+    ' "$file" > "$tmp_file"
+    mv "$tmp_file" "$file"
+    chmod 600 "$file"
+}
+
+delete_ini_key() {
+    local file="$1" key="$2"
+    local tmp_file
+    tmp_file="$(mktemp)"
+    awk -v k="$key" '
+        BEGIN { prefix = k "=" }
+        index($0, prefix) == 1 { next }
+        { print }
+    ' "$file" > "$tmp_file"
+    mv "$tmp_file" "$file"
+    chmod 600 "$file"
+}
 
 # Adapt hardware-specific audio device IDs if running on a new laptop/hardware
 EE_RC="$CONFIG_DIR/easyeffects/db/easyeffectsrc"
 if [ "$KEEP_DEVICE_IDS" = false ] && [ -f "$EE_RC" ] && command -v pactl >/dev/null 2>&1; then
-    ORIG_OUT="$(awk -F= '/^outputDevice=/{print $2}' "$EE_RC" || true)"
-    ORIG_IN="$(awk -F= '/^inputDevice=/{print $2}' "$EE_RC" || true)"
+    ORIG_OUT="$(awk -F= '/^outputDevice=/{print $2; exit}' "$EE_RC" || true)"
+    ORIG_IN="$(awk -F= '/^inputDevice=/{print $2; exit}' "$EE_RC" || true)"
 
-    if [ -n "$ORIG_OUT" ] && ! pactl list short sinks 2>/dev/null | grep -Fq "$ORIG_OUT"; then
+    if [ -n "$ORIG_OUT" ] && ! pactl list short sinks 2>/dev/null | awk -v d="$ORIG_OUT" '$2 == d {found=1} END{exit !found}'; then
         DEFAULT_SINK="$(pactl get-default-sink 2>/dev/null || true)"
+        if [ -z "$DEFAULT_SINK" ] || [ "$DEFAULT_SINK" = "easyeffects_sink" ] || [ "$DEFAULT_SINK" = "auto_null" ]; then
+            DEFAULT_SINK="$(pactl list short sinks 2>/dev/null | awk '$2 != "easyeffects_sink" && $2 != "auto_null" {print $2; exit}' || true)"
+        fi
         if [ -n "$DEFAULT_SINK" ]; then
-            sed -i "s|^outputDevice=.*|outputDevice=$DEFAULT_SINK|" "$EE_RC"
+            set_ini_key "$EE_RC" "outputDevice" "$DEFAULT_SINK"
             echo "Adapted outputDevice -> $DEFAULT_SINK (original desktop sink not present on this machine)"
         else
-            sed -i "/^outputDevice=/d" "$EE_RC"
+            delete_ini_key "$EE_RC" "outputDevice"
+            echo "Removed desktop outputDevice (no active sink detected; EasyEffects will use PipeWire default)"
         fi
     fi
 
-    if [ -n "$ORIG_IN" ] && ! pactl list short sources 2>/dev/null | grep -Fq "$ORIG_IN"; then
+    if [ -n "$ORIG_IN" ] && ! pactl list short sources 2>/dev/null | awk -v d="$ORIG_IN" '$2 == d {found=1} END{exit !found}'; then
         DEFAULT_SOURCE="$(pactl get-default-source 2>/dev/null || true)"
+        if [ -z "$DEFAULT_SOURCE" ] || [[ "$DEFAULT_SOURCE" == easyeffects_* ]] || [[ "$DEFAULT_SOURCE" == *.monitor ]]; then
+            DEFAULT_SOURCE="$(pactl list short sources 2>/dev/null | awk '$2 !~ /^easyeffects_/ && $2 !~ /\.monitor$/ {print $2; exit}' || true)"
+        fi
         if [ -n "$DEFAULT_SOURCE" ]; then
-            sed -i "s|^inputDevice=.*|inputDevice=$DEFAULT_SOURCE|" "$EE_RC"
+            set_ini_key "$EE_RC" "inputDevice" "$DEFAULT_SOURCE"
             echo "Adapted inputDevice -> $DEFAULT_SOURCE (original Bluetooth mic not present on this machine)"
         else
-            sed -i "/^inputDevice=/d" "$EE_RC"
+            delete_ini_key "$EE_RC" "inputDevice"
+            echo "Removed desktop inputDevice (no active hardware mic detected; EasyEffects will use PipeWire default)"
         fi
     fi
 fi
@@ -166,21 +206,25 @@ cp -a "$REPO_DIR/configs/systemd/easyeffects.service" "$CONFIG_DIR/systemd/user/
 systemctl --user daemon-reload
 if [ "$SKIP_PIPEWIRE" = false ]; then
     systemctl --user restart pipewire.service pipewire-pulse.service wireplumber.service 2>/dev/null || true
-    sleep 1
+    if command -v pactl >/dev/null 2>&1; then
+        for _ in $(seq 1 10); do
+            if pactl info >/dev/null 2>&1; then
+                break
+            fi
+            sleep 0.3
+        done
+    else
+        sleep 1
+    fi
 fi
 systemctl --user enable --now easyeffects.service
 
 # ------------------------------------------------------------------------------
-# STEP 6: Load Default Active Preset & Verify
+# STEP 6: Verify Live DB & Disable Global Bypass (Do NOT run -l, which clobbers live DB!)
 # ------------------------------------------------------------------------------
-echo -e "\033[1;34m[6/6] Loading active preset ('FIX ENAK 1') & verifying setup...\033[0m"
+echo -e "\033[1;34m[6/6] Verifying live EasyEffects state & ensuring bypass is OFF...\033[0m"
 
-ACTIVE_PRESET="$(awk -F= '/^lastLoadedOutputPreset=/{print $2}' "$EE_RC" || true)"
-if [ -z "$ACTIVE_PRESET" ]; then
-    ACTIVE_PRESET="FIX ENAK 1"
-fi
-
-# Wait up to 8s for EasyEffects D-Bus service to initialize
+# Wait up to 8s for EasyEffects D-Bus/IPC service to initialize
 for _ in $(seq 1 16); do
     if easyeffects -s >/dev/null 2>&1; then
         break
@@ -188,7 +232,9 @@ for _ in $(seq 1 16); do
     sleep 0.5
 done
 
-easyeffects -l "$ACTIVE_PRESET" 2>/dev/null || true
+# Note: Do NOT call `easyeffects -l "FIX ENAK 1"` here because ~/.config/easyeffects/db/*
+# already stores the exact live tuned parameters (e.g. Dolby Headphone Cinema + EQ tweaks),
+# whereas loading the older JSON preset via -l would overwrite those live DB settings.
 easyeffects -b 2 2>/dev/null || true
 
 echo ""
@@ -198,6 +244,7 @@ echo -e "\033[1;32m=============================================================
 echo "Presets installed : $(find "$DATA_DIR/easyeffects/output" -maxdepth 1 -name '*.json' | wc -l)"
 echo "IRS kernels       : $(find "$DATA_DIR/easyeffects/irs" -maxdepth 1 -name '*.irs' | wc -l)"
 echo "DB config files   : $(find "$CONFIG_DIR/easyeffects/db" -maxdepth 1 -type f | wc -l)"
+echo "Active Convolver#0: $(awk -F= '/^kernelName=/{print $2; exit}' "$CONFIG_DIR/easyeffects/db/convolverrc" 2>/dev/null || echo N/A)"
 echo "Service enabled   : $(systemctl --user is-enabled easyeffects.service 2>/dev/null || echo unknown)"
 echo "Service active    : $(systemctl --user is-active easyeffects.service 2>/dev/null || echo unknown)"
 echo "--- EasyEffects Status ---"

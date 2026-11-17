@@ -39,7 +39,8 @@ Lakukan seluruh langkah berikut secara otomatis dari terminal tanpa perlu saya e
       - Seluruh 21 file `*rc` terpasang lengkap (`easyeffectsrc`, `equalizerrc`, `convolverrc`, `bassEnhancerrc`, `bassLoudnessrc`, `stereotoolsrc`, `loudnessrc`, `limiterrc`, `multibandcompressorrc`, `compressorrc`, `autogainrc`, `gaterc`, `exciterrc`, `maximizerrc`, `crossfeedrc`, `crystalizerrc`, `deepfilternetrc`, `rnnoiserc`, `echoCancellerrc`, `speexrc`, `reverbrc`).
       - `levelMetersFpsCap=120`, `autostartOnLogin=true`, `lastLoadedOutputPreset=FIX ENAK 1`.
       - Rantai plugin output aktif: `convolver#0 -> equalizer#0 -> bass_enhancer#0 -> bass_loudness#0 -> stereo_tools#0 -> loudness#0 -> limiter#0`.
-      - Pastikan `outputDevice` dan `inputDevice` di `easyeffectsrc` sudah otomatis disesuaikan dengan default sink/source audio laptop baru bila hardware PC desktop tidak ada.
+      - **PENTING:** Jangan jalankan `easyeffects -l "FIX ENAK 1"` setelah `./install.sh`, karena live DB di `~/.config/easyeffects/db/` sudah menyimpan setting final yang lebih baru (`Dolby Headphone Cinema` + tweak EQ/Bass Enhancer), sedangkan `-l` akan menimpa DB dengan file JSON lama.
+      - Pastikan `outputDevice` dan `inputDevice` di `easyeffectsrc` sudah otomatis disesuaikan dengan default sink/source audio fisik laptop baru (bukan `easyeffects_sink`/`easyeffects_source`) bila hardware PC desktop tidak ada.
    c. **44 Output Presets & 38 Impulse Response (`.irs`)**:
       - Seluruh 44 file `.json` terpasang di `~/.local/share/easyeffects/output/`.
       - Seluruh 38 file `.irs` terpasang di `~/.local/share/easyeffects/irs/`.
@@ -53,6 +54,7 @@ Lakukan seluruh langkah berikut secara otomatis dari terminal tanpa perlu saya e
 4. Validasi status akhir di terminal:
    - `systemctl --user status easyeffects.service --no-pager`
    - `easyeffects -s` (pastikan output preset aktif `FIX ENAK 1`)
+   - `grep -E 'kernelName|inputGain' ~/.config/easyeffects/db/convolverrc ~/.config/easyeffects/db/equalizerrc` (pastikan live DB tetap `Dolby Headphone Cinema` & `inputGain=-0.5`)
    - `easyeffects -b 3` (pastikan hasil `2`, artinya global bypass OFF / efek aktif)
    - `easyeffects -p` (pastikan 44 output presets terbaca)
 
@@ -139,7 +141,7 @@ Opsi tambahan `./install.sh`:
 - `attack=2`, `release=15`, `outputGain=-0.5` *(di `FIX ENAK 1.json`: `mode="Herm Thin"`, `gain-boost=true`, `lookahead=5.0`, `stereo-link=100.0`, `threshold=0.0`)*
 
 #### H. Plugin DB Lainnya (Tersimpan & Siap Pakai di `~/.config/easyeffects/db/`)
-- `multibandcompressorrc`: 4-band split (`250 Hz`, `1250 Hz`, `5000 Hz`), `ratio=1.7`, `knee=-24`, `attackThreshold=-30`, attack `50/30/10/5 ms`, release `600/450/250/... ms`
+- `multibandcompressorrc`: 4-band split (`250 Hz`, `1250 Hz`, `5000 Hz`), `ratio=1.7`, `knee=-24`, `attackThreshold=-30`, attack `50/30/10/5 ms`, release `600/450/250 ms` (band 3 default)
 - `compressorrc`: `mode=1`, `sidechainMode=1`, `threshold=-10`, `ratio=5`, `knee=-24`, `attack=130`, `release=600`, `boostThreshold=-60`
 - `autogainrc`: `target=-12`, `outputGain=1.5`
 - `gaterc`: `attack=2000`, `release=2000`, `curveThreshold=-40`, `curveZone=-40`, `reduction=-30`
