@@ -1,0 +1,26 @@
+[Audio]
+levelMetersFpsCap=120
+
+[Presets]
+lastLoadedOutputPreset=FIX ENAK 1
+
+[StreamInputs]
+inputDevice=bluez_input.6E:2C:B5:F3:25:91
+
+[StreamOutputs]
+mostUsedPresets=Bass Enhancing + Perfect EQ - Low Latency,Bass Enhancing + Perfect EQ,josgandos1,mantul,dolby_71_real_subwoofer
+outputDevice=alsa_output.pci-0000_0a_00.6.analog-stereo
+plugins=convolver#0,equalizer#0,bass_enhancer#0,bass_loudness#0,stereo_tools#0,loudness#0,limiter#0
+usedPresets=mantul:11,Bass Enhancing + Perfect EQ:12,Perfect EQ:9,Loudness+Autogain:9,Boosted:8,Bass Enhancing + Perfect EQ - Low Latency:12,Bass Boosted:8,Advanced Auto Gain:7,Laptop:9,robot_rb690_standalone_jos:3,dolby_71_real_subwoofer:9,soundbar_beast_ultimate_v4:1,soundbar_beast_ultimate_v3:2,soundbar_akalan_gacor_max:2,robot_rb690_subwoofer_boost:2,robot_rb690_subout_boost:4,robot_rb490_boost:2,josgandos1:11,dolby_71_surround:6,dolby_v4_audiophile_master:5,dolby_v4_deep_bold:3,dolby_v4_macbook_blend:4,dolby_v4_perfect_balance:4,dual_jack_21_master:3,dolby_v4_perfect_natural:3,ENAK 2:6,macbook_bold_sound:2,soundbar_ultimate_bass_virtual:1,subwoofer_direct_pc:3,subwoofer_extreme_drive:1,subwoofer_max_soundbar_quiet:2,subwoofer_ultra_boost:2,warm_deep_bass:1,Dolby_Atmos_Cinema_LFE:8,jos baru:6,FIX ENAK 1:7,soundbar_gacor_bass_v2:1,soundbar_gold_master:1,subwoofer_extreme_amplified:1,LAPTOP TWS JOS:8
+visiblePage=pluginsPage
+visiblePlugin=equalizer#0
+
+[TestSignals]
+channels=left
+signalType=3
+
+[Window]
+autostartOnLogin=true
+height=566
+visiblePipeWirePage=testSignalsPage
+width=1000

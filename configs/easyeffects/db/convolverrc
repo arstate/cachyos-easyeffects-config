@@ -1,0 +1,6 @@
+[soe][Convolver#0]
+kernelName=Dolby Headphone Cinema
+
+[soe][Convolver#1]
+bypass=true
+kernelName=Dolby Pro Logic II 3

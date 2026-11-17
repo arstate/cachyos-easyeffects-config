@@ -1,0 +1,40 @@
+{
+    "output": {
+        "blocklist": [],
+        "plugins_order": [
+            "convolver#0",
+            "bass_enhancer#0",
+            "stereo_tools#0",
+            "loudness#0",
+            "limiter#0"
+        ],
+        "convolver#0": {
+            "bypass": false,
+            "input-gain": 0.0,
+            "kernel-name": "Dolby Surround & Pro Logic & LFE",
+            "output-gain": 0.0
+        },
+        "bass_enhancer#0": {
+            "bypass": false,
+            "amount": 6.0,
+            "harmonics": 6.0,
+            "scope": 140.0,
+            "floor": 20.0,
+            "blend": 0.0
+        },
+        "stereo_tools#0": {
+            "bypass": false,
+            "stereo-base": 0.55
+        },
+        "loudness#0": {
+            "bypass": false,
+            "output-gain": -1.0
+        },
+        "limiter#0": {
+            "bypass": false,
+            "threshold": -0.5,
+            "attack": 2.0,
+            "release": 15.0
+        }
+    }
+}

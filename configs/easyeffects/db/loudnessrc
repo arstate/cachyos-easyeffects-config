@@ -1,0 +1,8 @@
+[soe][Loudness#0]
+iirApproximation=3
+mode=1
+outputGain=-1
+
+[soe][Loudness#1]
+iirApproximation=3
+mode=1
